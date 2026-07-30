@@ -1,0 +1,115 @@
+@extends('layouts.app')
+@section('title', 'Rekap Harian')
+@section('page-title', 'Rekap Absensi Harian')
+
+@section('content')
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+    <!-- HEADER CARD -->
+    <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; line-height: 1.2;">Rekap Absensi Harian</h2>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Pantau rekapitulasi kehadiran siswa berdasarkan tanggal, kelas, dan status</p>
+        </div>
+    </div>
+
+    {{-- Form Filter --}}
+    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) 140px; gap: 16px; align-items: end;">
+            <div>
+                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px;">Tanggal</label>
+                <input type="date" name="tanggal" value="{{ $tanggal }}" style="width: 100%; padding: 10px 14px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #0f172a; outline: none; box-sizing: border-box;">
+            </div>
+            
+            <div>
+                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px;">Kelas</label>
+                <select name="kelas_id" style="width: 100%; padding: 10px 14px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #0f172a; outline: none; cursor: pointer; box-sizing: border-box;">
+                    <option value="">Semua Kelas</option>
+                    @foreach ($kelas as $k)
+                        <option value="{{ $k->id }}" @selected(request('kelas_id') == $k->id)>{{ $k->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px;">Status Kehadiran</label>
+                <select name="status" style="width: 100%; padding: 10px 14px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #0f172a; outline: none; cursor: pointer; box-sizing: border-box;">
+                    <option value="">Semua Status</option>
+                    @foreach (['hadir', 'terlambat', 'izin', 'sakit', 'dispensasi', 'alpa'] as $st)
+                        <option value="{{ $st }}" @selected(request('status') === $st)>{{ ucfirst($st) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600; color: #ffffff; background-color: #2563eb; border: none; border-radius: 10px; padding: 11px 18px; cursor: pointer; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);">
+                    Tampilkan
+                </button>
+            </div>
+        </form>
+    </div>
+
+    @if (request('kelas_id'))
+        @php $kelasTerpilih = $kelas->firstWhere('id', (int) request('kelas_id')); @endphp
+        @if ($kelasTerpilih)
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 20px; color: #1e40af; font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #2563eb;"></span>
+                <span>Kelas <strong style="font-weight: 700;">{{ $kelasTerpilih->nama }}</strong> — Wali Kelas: <strong style="font-weight: 700;">{{ $kelasTerpilih->namaWaliKelas() }}</strong></span>
+            </div>
+        @endif
+    @endif
+
+    {{-- Tabel Data --}}
+    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                <thead>
+                    <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <th style="padding: 14px 20px;">Nama Siswa</th>
+                        <th style="padding: 14px 20px;">Kelas</th>
+                        <th style="padding: 14px 20px;">Wali Kelas</th>
+                        <th style="padding: 14px 20px;">Jam Masuk</th>
+                        <th style="padding: 14px 20px;">Jam Pulang</th>
+                        <th style="padding: 14px 20px; text-align: center;">Status</th>
+                        <th style="padding: 14px 20px;">Metode</th>
+                    </tr>
+                </thead>
+                <tbody style="divide-y: 1px solid #f1f5f9;">
+                    @forelse ($absensi as $a)
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 14px 20px; font-weight: 700; color: #0f172a;">{{ $a->siswa->nama }}</td>
+                            <td style="padding: 14px 20px; font-weight: 500; color: #334155;">{{ $a->siswa->kelas->nama }}</td>
+                            <td style="padding: 14px 20px; color: #64748b;">{{ $a->siswa->kelas->namaWaliKelas() }}</td>
+                            <td style="padding: 14px 20px; font-weight: 600; color: #334155;">{{ $a->jam_masuk ?? '-' }}</td>
+                            <td style="padding: 14px 20px; font-weight: 600; color: #334155;">{{ $a->jam_pulang ?? '-' }}</td>
+                            <td style="padding: 14px 20px; text-align: center;">
+                                @if($a->status === 'hadir')
+                                    <span style="display: inline-block; padding: 4px 10px; background-color: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; border-radius: 20px;">Hadir</span>
+                                @elseif($a->status === 'terlambat')
+                                    <span style="display: inline-block; padding: 4px 10px; background-color: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; border-radius: 20px;">Terlambat</span>
+                                @elseif($a->status === 'alpa')
+                                    <span style="display: inline-block; padding: 4px 10px; background-color: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700; border-radius: 20px;">Alpa</span>
+                                @else
+                                    <span style="display: inline-block; padding: 4px 10px; background-color: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 700; border-radius: 20px;">{{ ucfirst($a->status) }}</span>
+                                @endif
+                            </td>
+                            <td style="padding: 14px 20px; font-weight: 700; text-transform: uppercase; font-size: 11px; color: #475569;">{{ $a->metode }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" style="padding: 32px; text-align: center; color: #64748b; font-size: 13px;">
+                                Tidak ada data absensi untuk tanggal ini.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Pagination --}}
+    <div style="margin-top: 10px;">
+        {{ $absensi->links() }}
+    </div>
+</div>
+@endsection

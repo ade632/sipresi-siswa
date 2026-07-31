@@ -26,6 +26,9 @@ window.scanAbsensi = function () {
             await this.muatFeed();
             setInterval(() => this.muatFeed(), 10000);
 
+            // 1. Jalankan pengawas video SEBELUM kamera dimulai
+            this.awasiTampilanVideo();
+
             // Delay singkat supaya elemen #qr-reader sudah punya ukuran/layout final
             // sebelum html5-qrcode mengukur dimensinya (mencegah video 0x0 / layar hitam).
             this.$nextTick(() => setTimeout(() => this.mulaiKamera(), 200));
@@ -93,6 +96,7 @@ window.scanAbsensi = function () {
             try {
                 // Coba kamera belakang dulu (facingMode environment), cocok untuk HP/tablet.
                 await this.html5Qr.start({ facingMode: 'environment' }, config, onScan, onFail);
+                
                 this.kameraStatus = 'aktif';
                 this.kameraAktif = true;
                 return;
@@ -111,6 +115,7 @@ window.scanAbsensi = function () {
                 }
 
                 await this.html5Qr.start(daftarKamera[0].id, config, onScan, onFail);
+                
                 this.kameraStatus = 'aktif';
                 this.kameraAktif = true;
             } catch (err) {
@@ -132,6 +137,25 @@ window.scanAbsensi = function () {
                     this.kameraPesan = 'Kamera gagal diaktifkan (' + namaError + '). Klik "Coba Lagi", atau gunakan input RFID.';
                 }
             }
+        },
+
+        // 2. Fungsi baru: MutationObserver untuk memaksa elemen video tampil penuh (tidak terpotong)
+        awasiTampilanVideo() {
+            const container = document.getElementById('qr-reader');
+            if (!container) return;
+
+            const observer = new MutationObserver(() => {
+                const videoEl = container.querySelector('video');
+                if (videoEl) {
+                    // Gunakan setProperty dengan '!important' agar tidak bisa ditimpa oleh library
+                    videoEl.style.setProperty('object-fit', 'contain', 'important');
+                    videoEl.style.setProperty('width', '100%', 'important');
+                    videoEl.style.setProperty('height', '100%', 'important');
+                }
+            });
+
+            // Awasi perubahan DOM di dalam div #qr-reader
+            observer.observe(container, { childList: true, subtree: true });
         },
 
         prosesRfid() {
@@ -168,13 +192,18 @@ window.scanAbsensi = function () {
                     }),
                 });
 
-                const data = await res.json();
+              const data = await res.json();
                 this.hasilTerakhir = data;
 
                 if (data.sukses) {
                     this.beep();
                     await this.muatFeed();
                 }
+
+                // Otomatis menutup notifikasi setelah 3 detik supaya kamera langsung siap lagi
+                setTimeout(() => {
+                    this.hasilTerakhir = null;
+                }, 3000);
             } catch (e) {
                 this.hasilTerakhir = { sukses: false, pesan: 'Gagal terhubung ke server. Periksa koneksi internet.' };
             } finally {

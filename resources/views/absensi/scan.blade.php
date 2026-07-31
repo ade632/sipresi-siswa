@@ -38,7 +38,7 @@
 
                 {{-- Kotak Kamera Responsif (Adaptif Layar HP) --}}
                 <div class="relative w-full max-w-lg mx-auto aspect-square sm:h-[400px] rounded-2xl overflow-hidden bg-black flex items-center justify-center shadow-inner border-2 border-slate-800">
-                    <div id="qr-reader" class="w-full h-full overflow-hidden absolute inset-0 [&_video]:object-cover [&_video]:w-full [&_video]:h-full"></div>
+                    <div id="qr-reader" class="w-full h-full overflow-hidden absolute inset-0 [&_video]:object-contain [&_video]:w-full [&_video]:h-full bg-black"></div>
 
                     {{-- Overlay Hasil Scan --}}
                     <div 
@@ -67,11 +67,28 @@
                         </button>
                     </div>
 
-                    {{-- Overlay Peringatan Sistem --}}
-                    <div x-show="!hasilTerakhir && (!kameraStatus || kameraStatus === 'error' || kameraStatus === 'tidak-ada-izin')" class="absolute inset-0 bg-red-950/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
-                        <span class="text-4xl sm:text-5xl mb-3">🚨</span>
-                        <p class="text-xs sm:text-sm font-black text-white uppercase tracking-widest mb-2 bg-red-600 px-4 py-1.5 rounded-full shadow">Peringatan Sistem</p>
-                        <p class="text-xs sm:text-sm text-red-100 font-bold leading-relaxed px-4" x-text="kameraPesan || 'Perangkat piket berada di luar radius lokasi sekolah atau izin kamera ditolak.'"></p>
+                   {{-- Overlay Hasil Scan --}}
+                    <div 
+                        x-show="hasilTerakhir" 
+                        x-cloak 
+                        class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md transition-all pointer-events-none"
+                        :class="(hasilTerakhir?.sukses && (hasilTerakhir?.status === 'hadir' || hasilTerakhir?.status === 'pulang')) ? 'bg-green-950/95 text-white' : ((hasilTerakhir?.sukses && hasilTerakhir?.status === 'terlambat') ? 'bg-amber-950/95 text-white' : 'bg-red-950/95 text-white')"
+                    >
+                        <template x-if="hasilTerakhir?.sukses">
+                            <div class="flex flex-col items-center justify-center space-y-3">
+                                <span class="text-5xl sm:text-6xl mb-1" x-text="hasilTerakhir?.status === 'hadir' ? '✅' : (hasilTerakhir?.status === 'pulang' ? '🏁' : '⚠️')"></span>
+                                <p class="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow" :class="hasilTerakhir?.status === 'hadir' ? 'bg-green-600 text-white' : (hasilTerakhir?.status === 'pulang' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white')" x-text="hasilTerakhir?.status"></p>
+                                <p class="text-lg sm:text-xl font-black text-white mt-1 leading-tight px-2" x-text="hasilTerakhir?.siswa?.nama"></p>
+                                <p class="text-xs sm:text-sm text-gray-200 font-bold" x-text="hasilTerakhir?.siswa?.kelas + ' (' + hasilTerakhir?.jam + ')'"></p>
+                            </div>
+                        </template>
+                        <template x-if="!hasilTerakhir?.sukses">
+                            <div class="flex flex-col items-center justify-center space-y-3">
+                                <span class="text-5xl sm:text-6xl mb-1 animate-bounce">🚨</span>
+                                <p class="text-xs sm:text-sm font-black bg-red-600 text-white uppercase tracking-widest px-4 py-1.5 rounded-full shadow">GAGAL / BELUM WAKTUNYA</p>
+                                <p class="text-sm text-red-100 font-bold leading-relaxed px-4 mt-1" x-text="hasilTerakhir?.pesan"></p>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Status Loading Kamera --}}

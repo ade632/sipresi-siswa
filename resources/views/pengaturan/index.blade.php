@@ -187,15 +187,15 @@
                                         </label>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <input type="time" name="hari[{{ $j->hari }}][jam_masuk]" value="{{ substr($j->jam_masuk,0,5) }}" :disabled="!aktif"
+                                        <input type="time" name="hari[{{ $j->hari }}][jam_masuk]" value="{{ substr($j->jam_masuk,0,5) }}" :readonly="!aktif"
+    class="w-full rounded-xl border-gray-300 text-xs shadow-sm focus:ring-blue-500 focus:border-blue-500 readonly:bg-gray-100 readonly:text-gray-400 py-2 px-3 text-gray-900 bg-white font-medium">
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input type="time" name="hari[{{ $j->hari }}][jam_masuk_terlambat]" value="{{ substr($j->jam_masuk_terlambat,0,5) }}" :readonly="!aktif"
                                             class="w-full rounded-xl border-gray-300 text-xs shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400 py-2 px-3 text-gray-900 bg-white font-medium">
                                     </td>
                                     <td class="px-4 py-3">
-                                        <input type="time" name="hari[{{ $j->hari }}][jam_masuk_terlambat]" value="{{ substr($j->jam_masuk_terlambat,0,5) }}" :disabled="!aktif"
-                                            class="w-full rounded-xl border-gray-300 text-xs shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400 py-2 px-3 text-gray-900 bg-white font-medium">
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <input type="time" name="hari[{{ $j->hari }}][jam_pulang]" value="{{ substr($j->jam_pulang,0,5) }}" :disabled="!aktif"
+                                        <input type="time" name="hari[{{ $j->hari }}][jam_pulang]" value="{{ substr($j->jam_pulang,0,5) }}" :readonly="!aktif"
                                             class="w-full rounded-xl border-gray-300 text-xs shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400 py-2 px-3 text-gray-900 bg-white font-medium">
                                     </td>
                                 </tr>

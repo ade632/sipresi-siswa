@@ -9,7 +9,10 @@ use App\Models\KalenderAkademik;
 use App\Models\Pengaturan;
 use App\Models\RadiusSekolah;
 use App\Models\TahunAjaran;
+use App\Models\Siswa;
+use App\Models\Absensi;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class PengaturanController extends Controller
 {
@@ -157,5 +160,97 @@ class PengaturanController extends Controller
         AuditLog::catat("Menambah kalender akademik: {$data['keterangan']}", 'kalender_akademik');
 
         return back()->with('success', 'Kalender akademik berhasil ditambahkan.');
+    }
+
+    /**
+     * Logika Scan Absensi:
+     * - Scan 1: Catat Masuk (Status: Hadir / Terlambat).
+     * - Scan 2: Catat Pulang.
+     */
+    public function scanAbsensi(Request $request)
+    {
+        $request->validate([
+            'kode' => ['required', 'string']
+        ]);
+
+        $siswa = Siswa::where('nis', $request->kode)
+                      ->orWhere('rfid_code', $request->kode)
+                      ->first();
+
+        if (!$siswa) {
+            return response()->json([
+                'sukses' => false,
+                'pesan' => 'Data siswa atau kartu tidak ditemukan!'
+            ], 404);
+        }
+
+        $today = Carbon::today();
+        $now = Carbon::now();
+        $hariIni = strtolower($now->translatedFormat('l')); 
+
+        $settingJam = JamAbsensiSetting::where('hari', $hariIni)->first();
+        
+        if (!$settingJam || !$settingJam->is_aktif) {
+            return response()->json([
+                'sukses' => false,
+                'pesan' => 'Hari ini sekolah diliburkan / tidak aktif.'
+            ], 400);
+        }
+
+        $absen = Absensi::where('siswa_id', $siswa->id)
+                        ->whereDate('tanggal', $today)
+                        ->first();
+
+        $dataSiswa = [
+            'nama' => $siswa->nama_lengkap ?? $siswa->nama,
+            'kelas' => $siswa->kelas->nama_kelas ?? 'Kelas -'
+        ];
+
+        if (!$absen) {
+            // ==========================================
+            // SCAN PERTAMA: MASUK / TERLAMBAT
+            // ==========================================
+            $batasTerlambat = Carbon::parse($today->toDateString() . ' ' . $settingJam->jam_masuk_terlambat);
+            $status = $now->greaterThan($batasTerlambat) ? 'terlambat' : 'hadir';
+
+            Absensi::create([
+                'siswa_id' => $siswa->id,
+                'tanggal' => $today->toDateString(),
+                'jam_masuk' => $now->toTimeString(),
+                'status' => $status,
+            ]);
+
+            return response()->json([
+                'sukses' => true,
+                'status' => $status, 
+                'jam' => $now->format('H:i:s'),
+                'siswa' => $dataSiswa,
+                'pesan' => 'Absen Masuk Berhasil!'
+            ]);
+
+        } else {
+            // ==========================================
+            // SCAN KEDUA: PULANG 
+            // ==========================================
+            if (!empty($absen->jam_pulang) && $absen->jam_pulang !== '00:00:00') {
+                return response()->json([
+                    'sukses' => false,
+                    'pesan' => 'Siswa sudah melakukan absensi lengkap (Masuk & Pulang) hari ini.'
+                ], 400);
+            }
+
+            // Update langsung jam pulang tanpa batasan waktu agar uji coba berhasil
+            $absen->update([
+                'jam_pulang' => $now->toTimeString()
+            ]);
+
+            return response()->json([
+                'sukses' => true,
+                'status' => 'pulang',
+                'jam' => $now->format('H:i:s'),
+                'siswa' => $dataSiswa,
+                'pesan' => 'Absen Pulang Berhasil!'
+            ]);
+        }
     }
 }

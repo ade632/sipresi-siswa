@@ -13,13 +13,6 @@ use App\Notifications\AbsensiTercatat;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Mengorkestrasi alur absensi sesuai revisi bisnis:
- * Siswa hanya membawa kartu (QR/RFID). Guru Piket yang melakukan scan
- * dari device piket yang sudah terdaftar (whitelist perangkat_piket).
- * Validasi lokasi & jam dilakukan terhadap device Guru Piket, bukan
- * device siswa, sehingga jauh lebih tahan manipulasi GPS.
- */
 class AbsensiService
 {
     public function __construct(
@@ -27,12 +20,6 @@ class AbsensiService
         protected SkorKedisiplinanService $skorService,
     ) {}
 
-    /**
-     * Proses scan QR atau RFID oleh Guru Piket.
-     *
-     * @param  string  $kodeKartu  Token QR (uuid) atau UID RFID (hex)
-     * @param  'qr'|'rfid'  $metode
-     */
     public function prosesScan(
         string $kodeKartu,
         string $metode,
@@ -42,7 +29,6 @@ class AbsensiService
         float $lon,
         string $ip,
     ): Absensi {
-        // 1. Validasi geofencing device piket.
         $hasilGeofence = $this->geofencing->validasi($lat, $lon);
 
         if (! $hasilGeofence['valid']) {
@@ -54,7 +40,6 @@ class AbsensiService
             ]);
         }
 
-        // 2. Cari kartu & siswa.
         $kartu = KartuAkses::where('kode', $kodeKartu)
             ->where('tipe', $metode)
             ->where('is_aktif', true)
@@ -75,7 +60,6 @@ class AbsensiService
             ]);
         }
 
-        // 3. Cek hari libur (kalender akademik) DAN hari non-sekolah rutin.
         $hariIni = now()->toDateString();
         if (KalenderAkademik::isLibur($hariIni)) {
             throw ValidationException::withMessages([
@@ -91,26 +75,22 @@ class AbsensiService
             ]);
         }
 
-        // 4. Cek duplikat absensi masuk hari ini.
         $existing = Absensi::where('siswa_id', $siswa->id)->whereDate('tanggal', $hariIni)->first();
 
         if (! $existing) {
             return $this->catatAbsenMasuk($siswa, $metode, $guruPiket, $perangkat, $lat, $lon, $hasilGeofence['jarak'], $ip, $jamSetting);
         }
 
-        // Jika sudah ada record & belum ada jam pulang -> anggap ini scan pulang.
         if ($existing->jam_masuk && ! $existing->jam_pulang) {
             return $this->catatAbsenPulang($existing, $jamSetting);
         }
 
-        // Sudah absen masuk DAN pulang hari ini -> tolak tegas.
         if ($existing->jam_masuk && $existing->jam_pulang) {
             throw ValidationException::withMessages([
                 'duplikat' => "{$siswa->nama} sudah tercatat Masuk ({$existing->jam_masuk}) dan Pulang ({$existing->jam_pulang}) hari ini. Tidak dapat absen lagi.",
             ]);
         }
 
-        // Record ada tapi bukan dari scan.
         throw ValidationException::withMessages([
             'duplikat' => "{$siswa->nama} sudah tercatat berstatus ".ucfirst($existing->status)." hari ini. Hubungi Guru Piket jika status ini keliru dan perlu diubah.",
         ]);
@@ -155,6 +135,8 @@ class AbsensiService
 
         $siswa->orangTua?->notify(new AbsensiTercatat($absensi));
 
+        $absensi->setAttribute('jenis_scan', 'masuk');
+
         return $absensi;
     }
 
@@ -162,27 +144,30 @@ class AbsensiService
     {
         $jamSekarang = now();
         
-        // Validasi jarak waktu minimal 60 menit dari jam masuk
-        $waktuMasuk = Carbon::parse($absensi->tanggal . ' ' . $absensi->jam_masuk);
+        $tglString = $absensi->tanggal instanceof \DateTimeInterface 
+            ? $absensi->tanggal->format('Y-m-d') 
+            : substr((string) $absensi->tanggal, 0, 10);
+
+        $waktuMasuk = Carbon::parse($tglString . ' ' . $absensi->jam_masuk);
         $selisihMenit = $waktuMasuk->diffInMinutes($jamSekarang, false);
 
         if ($selisihMenit < 60) {
             $sisaMenit = ceil(60 - $selisihMenit);
             throw ValidationException::withMessages([
-                'waktu_pulang' => ["Belum bisa absen pulang! Jarak waktu minimal 60 menit dari absen masuk ({$absensi->jam_masuk}). Kurang sekitar {$sisaMenit} menit lagi."],
+                'waktu_pulang' => ["Belum bisa absen pulang! ({$absensi->jam_masuk})."],
             ]);
         }
 
         $absensi->update(['jam_pulang' => $jamSekarang->format('H:i:s')]);
 
-        $absensi->siswa->orangTua?->notify(new AbsensiTercatat($absensi, pulang: true));
+        $absensi->siswa->orangTua?->notify(new AbsensiTercatat($absensi, true));
 
-        return $absensi->fresh();
+        $freshAbsensi = $absensi->fresh();
+        $freshAbsensi->setAttribute('jenis_scan', 'pulang');
+
+        return $freshAbsensi;
     }
 
-    /**
-     * Input absensi manual (izin/sakit/dispensasi/alpa) oleh Guru Piket.
-     */
     public function catatManual(Siswa $siswa, string $status, User $guruPiket, ?string $keterangan = null, ?string $lampiran = null): Absensi
     {
         $absensi = Absensi::updateOrCreate(

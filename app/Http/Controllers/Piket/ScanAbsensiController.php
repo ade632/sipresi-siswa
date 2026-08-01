@@ -9,13 +9,6 @@ use App\Services\AbsensiService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Halaman kios (kiosk mode) untuk Guru Piket. Siswa hanya membawa kartu
- * (QR fisik atau kartu RFID) -- Guru Piket yang mengoperasikan kamera/
- * RFID reader di device ini. Validasi lokasi dilakukan terhadap
- * perangkat piket (lihat middleware EnsurePerangkatPiketTerdaftar),
- * bukan device siswa.
- */
 class ScanAbsensiController extends Controller
 {
     public function __construct(protected AbsensiService $absensiService) {}
@@ -27,11 +20,6 @@ class ScanAbsensiController extends Controller
         ]);
     }
 
-    /**
-     * Endpoint dipanggil oleh JS (resources/js/scan-qr.js) setiap kali
-     * kamera berhasil membaca QR, atau RFID reader (mode HID keyboard-emulation)
-     * mengirim UID kartu ke input field tersembunyi di halaman scan.
-     */
     public function proses(Request $request)
     {
         $data = $request->validate([
@@ -55,6 +43,9 @@ class ScanAbsensiController extends Controller
                 ip: $request->ip(),
             );
 
+            $isPulang = !empty($absensi->jam_pulang) && 
+                        \Carbon\Carbon::parse($absensi->jam_pulang)->diffInMinutes(now()) <= 1;
+
             return response()->json([
                 'sukses' => true,
                 'siswa' => [
@@ -63,11 +54,9 @@ class ScanAbsensiController extends Controller
                     'kelas' => $absensi->siswa->kelas->nama,
                     'foto' => $absensi->siswa->foto ? asset('storage/'.$absensi->siswa->foto) : null,
                 ],
-                'status' => $absensi->status,
-                'jam' => $absensi->jam_pulang && ! $absensi->jam_masuk
-                    ? $absensi->jam_pulang
-                    : ($absensi->jam_pulang ?? $absensi->jam_masuk),
-                'tipe' => $absensi->jam_pulang && $absensi->wasRecentlyCreated === false ? 'pulang' : 'masuk',
+                'status' => $isPulang ? 'Pulang' : $absensi->status,
+                'jam' => $isPulang ? $absensi->jam_pulang : $absensi->jam_masuk,
+                'tipe' => $isPulang ? 'pulang' : 'masuk',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -77,7 +66,6 @@ class ScanAbsensiController extends Controller
         }
     }
 
-    /** Riwayat scan hari ini, untuk ditampilkan sebagai feed di sisi kanan layar kios. */
     public function feedHariIni()
     {
         $data = Absensi::hariIni()

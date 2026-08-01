@@ -40,39 +40,12 @@
                 <div class="relative w-full max-w-lg mx-auto aspect-square sm:h-[400px] rounded-2xl overflow-hidden bg-black flex items-center justify-center shadow-inner border-2 border-slate-800">
                     <div id="qr-reader" class="w-full h-full overflow-hidden absolute inset-0 [&_video]:object-contain [&_video]:w-full [&_video]:h-full bg-black"></div>
 
-                    {{-- Overlay Hasil Scan --}}
-                    <div 
-                        x-show="hasilTerakhir" 
-                        x-cloak 
-                        class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md transition-all"
-                        :class="(hasilTerakhir?.sukses && (hasilTerakhir?.status === 'hadir' || hasilTerakhir?.status === 'pulang')) ? 'bg-green-950/95 text-white' : ((hasilTerakhir?.sukses && hasilTerakhir?.status === 'terlambat') ? 'bg-amber-950/95 text-white' : 'bg-red-950/95 text-white')"
-                    >
-                        <template x-if="hasilTerakhir?.sukses">
-                            <div class="flex flex-col items-center justify-center space-y-3">
-                                <span class="text-5xl sm:text-6xl mb-1" x-text="hasilTerakhir?.status === 'hadir' ? '✅' : (hasilTerakhir?.status === 'pulang' ? '🏁' : '⚠️')"></span>
-                                <p class="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow" :class="hasilTerakhir?.status === 'hadir' ? 'bg-green-600 text-white' : (hasilTerakhir?.status === 'pulang' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white')" x-text="hasilTerakhir?.status"></p>
-                                <p class="text-lg sm:text-xl font-black text-white mt-1 leading-tight px-2" x-text="hasilTerakhir?.siswa?.nama"></p>
-                                <p class="text-xs sm:text-sm text-gray-200 font-bold" x-text="hasilTerakhir?.siswa?.kelas + ' (' + hasilTerakhir?.jam + ')'"></p>
-                            </div>
-                        </template>
-                        <template x-if="!hasilTerakhir?.sukses">
-                            <div class="flex flex-col items-center justify-center space-y-3">
-                                <span class="text-5xl sm:text-6xl mb-1 animate-bounce">🚨</span>
-                                <p class="text-xs sm:text-sm font-black bg-red-600 text-white uppercase tracking-widest px-4 py-1.5 rounded-full shadow">GAGAL / BELUM WAKTUNYA</p>
-                                <p class="text-sm text-red-100 font-bold leading-relaxed px-4 mt-1" x-text="hasilTerakhir?.pesan"></p>
-                            </div>
-                        </template>
-                        <button @click="hasilTerakhir = null" class="mt-6 bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition cursor-pointer shadow">
-                            🔄 Tutup / Scan Lagi
-                        </button>
-                    </div>
-
                    {{-- Overlay Hasil Scan --}}
                     <div 
                         x-show="hasilTerakhir" 
                         x-cloak 
-                        class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md transition-all pointer-events-none"
-                        :class="(hasilTerakhir?.sukses && (hasilTerakhir?.status === 'hadir' || hasilTerakhir?.status === 'pulang')) ? 'bg-green-950/95 text-white' : ((hasilTerakhir?.sukses && hasilTerakhir?.status === 'terlambat') ? 'bg-amber-950/95 text-white' : 'bg-red-950/95 text-white')"
+                        class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md transition-all"
+                        :class="hasilTerakhir?.sukses ? (hasilTerakhir?.status === 'hadir' ? 'bg-green-950/95 text-white' : (hasilTerakhir?.status === 'pulang' ? 'bg-blue-950/95 text-white' : 'bg-amber-950/95 text-white')) : 'bg-red-950/95 text-white'"
                     >
                         <template x-if="hasilTerakhir?.sukses">
                             <div class="flex flex-col items-center justify-center space-y-3">
@@ -89,9 +62,12 @@
                                 <p class="text-sm text-red-100 font-bold leading-relaxed px-4 mt-1" x-text="hasilTerakhir?.pesan"></p>
                             </div>
                         </template>
+                        <button @click="hasilTerakhir = null" class="mt-6 bg-white/25 hover:bg-white/35 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition cursor-pointer shadow">
+                            🔄 Tutup / Scan Lagi
+                        </button>
                     </div>
 
-                    {{-- Status Loading Kamera --}}
+                                      {{-- Status Loading Kamera --}}
                     <div x-show="!hasilTerakhir && kameraStatus === 'memuat'" x-cloak class="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-gray-900/95 z-10">
                         <svg class="animate-spin w-9 h-9 text-white/70 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path></svg>
                         <p class="text-white/90 text-sm font-semibold" x-text="kameraPesan"></p>
